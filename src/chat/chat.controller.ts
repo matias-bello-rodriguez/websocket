@@ -16,4 +16,16 @@ export class ChatController {
     this.chatGateway.notifyInspection(userId, inspectionId, vehicleId, message);
     return { success: true, message: 'Notification sent' };
   }
+
+  @Post('notify-users')
+  notifyUsers(@Body() body: { userIds: string[]; title: string; message: string; data?: any }) {
+    const { userIds, title, message, data } = body;
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      throw new BadRequestException('userIds array is required');
+    }
+
+    this.chatGateway.notifyUsers(userIds, title, message, data);
+    return { success: true, message: 'Notifications sent' };
+  }
 }

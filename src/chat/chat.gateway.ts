@@ -143,11 +143,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Method to be called from Controller
   notifyInspection(userId: string, inspectionId: string, vehicleId: string, message: string) {
-    this.server.to(`user:${userId}`).emit('inspection_notification', {
+    this.server.to(`user:${userId}`).emit('inspection_assigned', {
       inspectionId,
       vehicleId,
       message,
     });
     this.logger.log(`Notification sent to user ${userId} for inspection ${inspectionId}`);
+  }
+
+  notifyUsers(userIds: string[], title: string, message: string, data?: any) {
+    userIds.forEach(userId => {
+      this.server.to(`user:${userId}`).emit('notification', {
+        title,
+        message,
+        ...data,
+      });
+    });
+    this.logger.log(`Notification sent to ${userIds.length} users: ${title}`);
   }
 }
