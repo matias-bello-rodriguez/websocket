@@ -46,30 +46,33 @@ export class ChatService {
   }
 
   async getConversations(userId: string): Promise<any[]> {
-    // This is a complex query to get last message per conversation
-    // Using raw query builder might be easier for "group by" logic
-    const qb = this.mensajeRepository.createQueryBuilder('m');
-    
-    // This is a simplified version. In a real app, you'd want the latest message for each pair.
-    // For now, let's just return all messages involving the user, client can filter or we improve this later.
-    // Or better, let's try to fetch distinct users interacted with.
-    
-    const sent = await this.mensajeRepository
-      .createQueryBuilder('m')
-      .select('DISTINCT m.destinatarioId', 'userId')
-      .where('m.remitenteId = :userId', { userId })
-      .getRawMany();
+    const messages = await this.mensajeRepository.find({
+      where: [
+        { remitenteId: userId },
+        { destinatarioId: userId },
+      ],
+      order: { fechaCreacion: 'DESC' },
+    });
 
-    const received = await this.mensajeRepository
-      .createQueryBuilder('m')
-      .select('DISTINCT m.remitenteId', 'userId')
-      .where('m.destinatarioId = :userId', { userId })
-      .getRawMany();
+    const conversationsMap = new Map<string, any>();
 
-    const contactIds = new Set([...sent.map(s => s.userId), ...received.map(r => r.userId)]);
-    
-    // Ideally we would fetch user details here, but we don't have User entity access easily.
-    // We return the IDs and let the frontend fetch user details from the main backend.
-    return Array.from(contactIds).map(id => ({ userId: id }));
+    messages.forEach((msg) => {
+      const otherUserId = msg.remitenteId === userId ? msg.destinatarioId : msg.remitenteId;
+      
+      if (!conversationsMap.has(otherUserId)) {
+        conversationsMap.set(otherUserId, {
+          userId: otherUserId,
+          unreadCount: 0,
+          lastMessageDate: msg.fechaCreacion,
+        });
+      }
+
+      const conv = conversationsMap.get(otherUserId);
+      if (msg.destinatarioId === userId && !msg.leido) {
+        conv.unreadCount += 1;
+      }
+    });
+
+    return Array.from(conversationsMap.values());
   }
 }
